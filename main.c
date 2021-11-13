@@ -99,12 +99,12 @@ int main(){
 	printf("\n\n--- Secuential RGB2GRAY ---\n");
 	gray_img = rgb_2_gray(img, width,height,channels);
 	printf("Saving image gray ... \n");
-	stbi_write_bmp(strcat(gray_path,"_gray.jpg"),width ,height , 1 , gray_img ); 
+	stbi_write_bmp(strcat(gray_path,"_gray.bmp"),width ,height , 1 , gray_img ); 
 	memset(gray_img, 0, pxs);
 
 	printf("\n\n--- Parallel RGB2GRAY ---\n");
 	gray_img = rgb_2_gray_parallel(img, width, height, channels);
-	stbi_write_bmp(strcat(gray_path_parallel,"_gray_parallel.jpg"), width ,height , 1 , gray_img ); 
+	stbi_write_bmp(strcat(gray_path_parallel,"_gray_parallel.bmp"), width ,height , 1 , gray_img ); 
 	printf("Saving image gray parallel... \n");
 	memset(gray_img, 0, pxs);
 	printf("\n\nFinished :)\n");
