@@ -1,1 +1,3 @@
 *.out
+*_gray.*
+*_gray_parallel.*
