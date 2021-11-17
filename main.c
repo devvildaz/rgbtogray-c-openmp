@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <assert.h>
 #include <omp.h>
 
 #define STB_IMAGE_IMPLEMENTATION
@@ -31,14 +32,15 @@ uint8_t* rgb_2_gray(uint8_t *data, int w, int h, int chs){
 	uint8_t *gray_img = (uint8_t*)malloc(w*h);
 
 	// declare time indicators
+	// [r,g,b,r,g,b,.....,r,g,b]
+	// [g,g,g,g,g,g,g,...,g,g,g]
 	double before = omp_get_wtime();
 	for(int i=0; i < w*h; i++){
 		r = *(data + chs*i);
 		g = *(data + chs*i + 1);
 		b = *(data + chs*i + 2);
 		// show_px(r, g, b);
-		gray= (r+g+b)/3;
-		*(gray_img + i) = gray;
+		*(gray_img + i) = (r+g+b)/3;
 	}
 	double after = omp_get_wtime();
 	printf("%f seconds\n", after-before);
@@ -46,65 +48,72 @@ uint8_t* rgb_2_gray(uint8_t *data, int w, int h, int chs){
 }
 
 uint8_t* rgb_2_gray_parallel(uint8_t *data, int w, int h, int chs){
-	int num_procs = omp_get_num_procs();
-	printf("%d cores\n", num_procs);
-
 	uint8_t r;
 	uint8_t g;
 	uint8_t b;
 
-	// declare gray variable (one channel)
-	uint8_t gray;
-	uint8_t *gray_img = (uint8_t*)malloc(w*h);
+	uint8_t *gray_img = (uint8_t*)malloc(w*h);	
 
 	double before = omp_get_wtime();
-	#pragma omp parallel for private(r,g,b,gray) 
+
+	#pragma omp parallel
+	{
+		#pragma omp single
+		printf("%d cores\n", omp_get_num_threads());
+	}
+
+	#pragma omp parallel for private(r,g,b) 
 	for(int i=0; i < w*h; i++){
 		r = *(data + chs*i);
 		g = *(data + chs*i + 1);
 		b = *(data + chs*i + 2);
-		// show_px(r, g, b);
-		gray= (r+g+b)/3;
-		*(gray_img + i) = gray;
+		*(gray_img + i) = (r+g+b)/3;
 	}
 	double after = omp_get_wtime();
 	printf("%f seconds\n", after - before);
 	return gray_img;
 }
 
-int main(){
+int main(int argc, char** argv){
+	printf("%s", argv[1]);
+	assert(strcmp(argv[1],"--input") == 0);
+	char* input = argv[2];
+	assert(strcmp(argv[3],"--output") == 0);
+	char* output= argv[4];
+	char* output_parallel;
+	strcpy(output_parallel, output);
+	assert(strcmp(argv[5],"--cores") == 0 );
+	int cores= atoi(argv[6]);
+
 	// declare image data variables
 	int width, height, channels;
 	// input image path
 	char image_path[128], gray_path[128], gray_path_parallel[128];
-	printf("Image path: ");
-	scanf("%s", image_path);
 
 	// load image data
-	uint8_t *img = stbi_load(image_path, &width, &height,&channels, 0);
+	uint8_t *img = stbi_load(input, &width, &height,&channels, 0);
 	// if img doesnt exist
 	if(!img){
 		printf("Error in loading\n");
 		exit(1);
 	}
-	printf("Gray image name: ");
-	scanf("%s", gray_path);
 	// load image data
 	show_metadata(width, height, channels);
 	
 	uint8_t *gray_img;
 
 	int pxs = width * height;
+	omp_set_num_threads(cores);
 	strcpy(gray_path_parallel, gray_path);
 	printf("\n\n--- Secuential RGB2GRAY ---\n");
 	gray_img = rgb_2_gray(img, width,height,channels);
 	printf("Saving image gray ... \n");
-	stbi_write_bmp(strcat(gray_path,"_gray.bmp"),width ,height , 1 , gray_img ); 
+	stbi_write_bmp(strcat(output,"_gray.bmp"),width ,height , 1 , gray_img ); 
 	memset(gray_img, 0, pxs);
 
 	printf("\n\n--- Parallel RGB2GRAY ---\n");
 	gray_img = rgb_2_gray_parallel(img, width, height, channels);
-	stbi_write_bmp(strcat(gray_path_parallel,"_gray_parallel.bmp"), width ,height , 1 , gray_img ); 
+	stbi_write_bmp(strcat(output_parallel,"_gray_parallel.bmp"), width ,height , 1 , gray_img ); 
 	printf("Saving image gray parallel... \n");
 	memset(gray_img, 0, pxs);
 	printf("\n\nFinished :)\n");
